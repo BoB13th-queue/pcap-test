@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <cstring>
 #include <map>
 
 #include "p_headers.h"
@@ -227,7 +228,6 @@ std::map<int, const char*> ether_types = {
     {0xF1C1, "Redundancy Tag (IEEE 802.1CB Frame Replication and Elimination for Reliability)"}
 };
 
-
 void usage() {
 	printf("syntax: pcap-test <interface>\n");
 	printf("sample: pcap-test wlan0\n");
@@ -257,7 +257,7 @@ u_int16_t print_ethernet_header(const u_char* packet) {
     printf("Ethernet II header:\n");
     printf("  Destination MAC: %02x:%02x:%02x:%02x:%02x:%02x\n", eth->ether_dhost[0], eth->ether_dhost[1], eth->ether_dhost[2], eth->ether_dhost[3], eth->ether_dhost[4], eth->ether_dhost[5]);
     printf("  Source MAC: %02x:%02x:%02x:%02x:%02x:%02x\n", eth->ether_shost[0], eth->ether_shost[1], eth->ether_shost[2], eth->ether_shost[3], eth->ether_shost[4], eth->ether_shost[5]);
-    printf("  Type: 0x%04x-%s\n", type, ether_types.find(type) != ether_types.end() ? ether_types[type] : "N/A");
+    printf("  Type: 0x%04x - %s\n", type, ether_types.find(type) != ether_types.end() ? ether_types[type] : "N/A");
     printf("\n");
     return type;
 }
@@ -275,12 +275,26 @@ u_int8_t print_ip_header(const u_char* packet) {
 }
 
 void print_tcp_header(const u_char* packet) {
-    struct libnet_tcp_hdr* tcp = (struct libnet_tcp_hdr*)(packet + sizeof(struct libnet_ethernet_hdr) + sizeof(struct libnet_ipv4_hdr));
+    struct libnet_tcp_hdr* tcp = (struct libnet_tcp_hdr*)packet;
+    
     printf("TCP header:\n");
     printf("  Source Port: %d\n", ntohs(tcp->th_sport));
     printf("  Destination Port: %d\n", ntohs(tcp->th_dport));
-    printf("  Sequence Number: %u\n", ntohs(tcp->th_seq));
-    printf("  Acknowledgment Number: %u\n", ntohs(tcp->th_ack));
+    printf("  Sequence Number: %u\n", ntohl(tcp->th_seq));
+    printf("  Acknowledgment Number: %u\n", ntohl(tcp->th_ack));
+    printf("\n");
+    printf("  [Data]\n  ");
+
+    u_int8_t data_start = tcp->th_off * 4;
+    u_char* data = (u_char*)(packet + data_start);
+    for (int i = 0; i < 20; i++) printf("%02x ", data[i]);
+    
+    printf(" | ");
+
+    for (int i = 0; i < 20; i++) putchar(data[i] >= 0x20 && data[i] <= 0x7E ? data[i] : '.');
+    putchar('\n');
+
+    printf("\tand more...\n");
 }
 
 int main(int argc, char* argv[]) {

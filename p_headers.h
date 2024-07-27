@@ -29,6 +29,7 @@
  *
  */
 
+#define LIBNET_LIL_ENDIAN 1
 typedef int n_time;
 
 #ifndef __LIBNET_HEADERS_H
